@@ -4,15 +4,16 @@
 import numpy as np
 from PIL import Image
 from scipy.ndimage import zoom
-
+from network import MLP_NN
 
 class Agent():
 
     """An agent whic exists on the grid"""
 
     agents = {}
+    max_id = 0
 
-    def __init__(self, agent_id, grid_ref, agent_name='Agent', sensor_radius=3):
+    def __init__(self, agent_id, grid_ref, agent_name='Agent', sensor_radius=5):
         """Initializes an agent
 
         :agent_id: The agent id, must be unique to other agents
@@ -32,8 +33,26 @@ class Agent():
 
         self.sensor_radius = sensor_radius
 
+        self.brain = MLP_NN( (2*sensor_radius+1)**2, 100, 3)
+        self.left = 1
+        self.center = 0
+        self.right = 2
+
     def __str__(self):
         return '%s-%d' % (self.agent_name, self.agent_id)
+
+    def __add__(self, other):
+        """Overloaded addition operator. This allows
+        two agents to crossover for genetic evolution
+
+        :other: Reference to the comparator
+        :returns: A new agent with a mixed genome
+
+        """
+        new_agent = Agent(Agent.max_id + 1, self.grid)
+
+        new_agent.brain = MLP_NN.crossover(self.brain, other.brain)
+        return new_agent
 
     def set_pos(self, x, y):
         """Sets the position of the agent
@@ -55,12 +74,21 @@ class Agent():
         self.set_pos(self.x + delta_x, self.y + delta_y)
 
     def step(self):
-        # TODO Make a decision to move left or right or straight
-        self.evaluate_turn()
+        cur_sense = self.sense()
+
+        result = self.brain.feedforward(cur_sense.flatten())
+        result = result.index(max(result))
+
+        if result == self.left:
+            self.set_orientation(self.heading - 1)
+
+        if result == self.right:
+            self.set_orientation(self.heading + 1)
+
         self.move_forward()
         self.lifetime += 1
 
-    def evaluate_turn(self):
+    def sense(self):
         max_x = self.x + self.sensor_radius
         min_x = self.x - self.sensor_radius
         max_y = self.y + self.sensor_radius
@@ -79,9 +107,13 @@ class Agent():
             for y in range(y_range[0], y_range[1]):
                 i_x = self.sensor_radius + (x - self.x)
                 i_y = self.sensor_radius + (y - self.y)
-                self.sensor[i_x][i_y] = self.grid.grid[x][y]
+                if self.grid.grid[x][y] > 0:
+                    self.sensor[i_x][i_y] = 255
+                else:
+                    self.sensor[i_x][i_y] = 0
 
-        self.render_sensor().save('%s-%08d.jpg' % (str(self), self.lifetime))
+        #self.render_sensor().save('%s-%08d.jpg' % (str(self), self.lifetime))
+        return self.sensor
 
     def render_sensor(self, scale=5):
         array = np.copy(self.sensor)
@@ -100,6 +132,8 @@ class Agent():
         if agent.agent_id in Agent.agents:
             raise ValueError('Duplicate agent id!')
         Agent.agents[agent.agent_id] = agent
+        if agent.agent_id > Agent.max_id:
+            Agent.max_id = agent.agent_id
 
     @staticmethod
     def check_type(variable, dtype):
