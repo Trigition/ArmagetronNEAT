@@ -5,13 +5,14 @@ import numpy as np
 from PIL import Image
 from scipy.ndimage import zoom
 from agent import Agent
+from neat import NEAT_Pool
 
 
 class Grid():
 
     """A grid of pixels and agents"""
 
-    def __init__(self, width, height, num_agents, seeding_agents=None):
+    def __init__(self, width, height, num_agents, sensor_radius=5):
         """Initializes the grid with a specific width
         and height
 
@@ -27,29 +28,26 @@ class Grid():
 
         self.width = width
         self.height = height
+        self.num_agents = num_agents
 
         # Create grid
         self.grid = np.zeros((width, height), dtype=np.uint8)
 
+        # Create pool
+        dims = (sensor_radius+1, sensor_radius+1)
+        self.pool = NEAT_Pool(self.grid, dims, 3)
+
         self.active_agents = []
         self.my_agents = []
 
-        if seeding_agents is None:
-            self.register_agents([Agent(i + 1, self) for i in range(num_agents)])
-        else:
-            gen_agents = 0
-            print('Performing crossover')
-            while gen_agents <= num_agents:
-                src1_i = (gen_agents // len(seeding_agents) % len(seeding_agents))
-                src2_i = (gen_agents + 1) % len(seeding_agents)
-                result = seeding_agents[src1_i] + seeding_agents[src2_i]
+        # self.register_agents([Agent(i + 1, self) for i in range(num_agents)])
+        agents = []
+        for i in range(num_agents):
+            agents.append(Agent(i+1, self, self.pool))
+        
+        self.register_agents(agents)
 
-                result.grid = self
-                gen_agents += 1
-                self.active_agents.append(result)
-                self.my_agents.append(result)
-                self.randomly_place_agent(result)
-
+        
     def register_agents(self, agents):
         for agent in agents:
             self.active_agents.append(agent)
@@ -85,12 +83,12 @@ class Grid():
 
         return Image.fromarray(array)
 
-    def simulate(self, epoch=0):
+    def simulate(self, num_epochs=5):
         print('Simulating')
         iterations = 0
         while len(self.active_agents) > 0:
             self.step()
-            #self.render_grid(4).save('%d-%08d.jpg' % (epoch, iterations))
+            self.render_grid(4).save('%08d.jpg' % iterations)
             iterations += 1
 
         print('Simulation finished after %d steps' % iterations)
@@ -100,4 +98,12 @@ class Grid():
         for agent in sorted_agents:
             print('\t%s: %d' % (str(agent), agent.lifetime))
 
-        return sorted_agents
+
+        n_top = len(sorted_agents)
+        new_agents = []
+        for i in range(self.num_agents):
+            parent1 = sorted_agents[i // n_top]
+            parent2 = sorted_agents[(i+1) % n_top]
+            offspring = parent1 + parent2
+
+        #return sorted_agents

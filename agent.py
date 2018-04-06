@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 from scipy.ndimage import zoom
 from network import MLP_NN
+from neat import NEAT_Network, NEAT_Pool
 
 class Agent():
 
@@ -13,7 +14,7 @@ class Agent():
     agents = {}
     max_id = 0
 
-    def __init__(self, agent_id, grid_ref, agent_name='Agent', sensor_radius=5):
+    def __init__(self, agent_id, grid_ref, pool_ref, agent_name='Agent', sensor_radius=5):
         """Initializes an agent
 
         :agent_id: The agent id, must be unique to other agents
@@ -29,11 +30,13 @@ class Agent():
         self.grid = grid_ref
         self.agent_name = agent_name
         self.lifetime = 0
+        self.pool = pool_ref
         Agent.register_agent(self)
 
         self.sensor_radius = sensor_radius
 
-        self.brain = MLP_NN( (2*sensor_radius+1)**2, 100, 3)
+        # self.brain = MLP_NN( (2*sensor_radius+1)**2, 100, 3)
+        self.brain = NEAT_Network(pool_ref.starting_genome, pool_ref)
         self.left = 1
         self.center = 0
         self.right = 2
@@ -49,9 +52,10 @@ class Agent():
         :returns: A new agent with a mixed genome
 
         """
-        new_agent = Agent(Agent.max_id + 1, self.grid)
+        new_agent = Agent(Agent.max_id + 1, self.grid, self.pool)
 
-        new_agent.brain = MLP_NN.crossover(self.brain, other.brain)
+        #new_agent.brain = MLP_NN.crossover(self.brain, other.brain)
+        new_agent.brain = self.brain + other.brain
         return new_agent
 
     def set_pos(self, x, y):
@@ -76,7 +80,7 @@ class Agent():
     def step(self):
         cur_sense = self.sense()
 
-        result = self.brain.feedforward(cur_sense.flatten())
+        result = self.brain.feedforward(cur_sense)
         result = result.index(max(result))
 
         if result == self.left:

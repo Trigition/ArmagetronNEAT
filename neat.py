@@ -3,7 +3,9 @@
 
 
 import networkx as nx
+import random
 from activation import sigmoid
+
 
 class Node():
 
@@ -59,6 +61,24 @@ class NEAT_Pool():
 
         self.starting_genome = initial_genome
 
+    def new_hidden_node(self):
+        self.node_num += 1
+        node = Node(self.node_num, 'hidden')
+        self.nodes[node.label] = node
+        return node
+
+    def new_gene(self, input_node, output_node):
+        """Constructs a new gene from an input node
+        and an output node. It's innovation number is
+        assigned. Note that any new gene's weight is
+        zero.
+
+        :input_node: Node to read values from
+        :output_node: Node to write values to
+
+        """
+        edge = create_connection(input_node, output_node, self)
+        return edge
 
 class NEAT_Network():
 
@@ -86,9 +106,56 @@ class NEAT_Network():
                                       gene['out'],\
                                       weight=gene['weight'])
 
+    def __add__(self, other):
+        """Overrides the '+' operator for easy crossover
+
+        :other: The other network
+        :returns: TODO
+
+        """
+        if type(other) is not NEAT_Network:
+            raise TypeError('You can only add Networks to other Networks')
+        
+        new_genome = {}
+
+        for i in range(self.pool.innovation_number):
+            left_gene = self.genome[i] if i in self.genome else None
+            right_gene = other.genome[i] if i in other.genome else None
+
+            if left_gene is not None and right_gene is not None:
+                # Randomly choose a gene
+                chosen_gene = random.choice( [left_gene, right_gene] )
+                new_genome[i] = chosen_gene.copy()
+            elif left_gene is not None:
+                # Either disjoint or excess gene
+                # Use this gene
+                new_genome[i] = left_gene.copy()
+            elif right_gene is not None:
+                new_genome[i] = right_gene.copy()
+            else:
+                continue # Neither parent contains the gene for this innovation number
+
+            # Mutage weights
+            new_genome[i]['weight'] += random.randrange(-1, 1) / 100.0
+
+        self.mutate()
+
+        return NEAT_Network(new_genome, self.pool)
+
+    def mutate(self):
+        """Mutates the network
+
+        """
+        chance = random.randrange(0.0,1.0)
+        if chance > 0.9:
+            self.innovate_node()
+        change = random.randrange(0.0,1.0)
+        if change > 0.9:
+            self.innovate_edge()
+
+
     def feedforward(self, data):
         # Load data
-
         output = []
 
         flat_data = data.flatten()
@@ -104,7 +171,41 @@ class NEAT_Network():
         return output
 
     def innovate_node(self):
-        pass
+        # Choose an edge to mutate
+        desired_edge = random.choice(self.network.edges)
+        
+        # Ask pool to generate a hidden node
+        new_node = self.pool.new_hidden_node()
+        
+        # Create connections
+        gene1 = self.pool.new_gene(desired_edge['in'], new_node)
+        gene2 = self.pool.new_gene(new_node, desired_edge['out'])
+
+        self.genome.append(gene1)
+        seld.genome.append(gene2)
+
+        # Disable old edge
+        desired_edge['enabled'] = False
+
+    def innovate_edge(self):
+        """Innovates a new edge connection
+
+        """
+        # Chose random source node
+        # This node cannot be an Input node
+        nodes = [node for node in self.network.nodes if nx.in_degree(self.networkx, node) > 0]
+        src_node = random.choice(nodes)
+        # Chose random destination node
+        # This node cannot be an ancestor of the input node
+        # this is to avoid a cycle
+        dest_nodes = [node for node in self.network.nodes if node not in self.network.predecessors(src_node)]
+
+        if len(dest_nodes) > 0:
+            dest_node = random.choice(dest_nodes)
+            new_gene = self.pool.new_gene(src_node, dest_node)
+            self.genome.append(new_gene)
+
+
 
 
 def get_weighted_sum(cur_node, network):

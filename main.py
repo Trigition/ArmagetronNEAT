@@ -3,11 +3,12 @@
 
 from armagetron import Grid
 
-max_agents = 3
+max_agents = 10
 
 if __name__ == '__main__':
     i=0
     grid = Grid(100,100, max_agents)
+    grid.simulate()
     # results = grid.simulate(epoch=i)
     # while True:
     #     try:

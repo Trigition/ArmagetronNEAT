@@ -14,7 +14,9 @@ def test_network_creation():
     pool = NEAT_Pool(None, (5,5), 3)
     net = NEAT_Network(pool.starting_genome, pool)
 
-    data = np.random.rand(5,5).flatten()
+def test_network_crossover():
+    pool = NEAT_Pool(None, (5,5), 3)
+    net1 = NEAT_Network(pool.starting_genome, pool)
+    net2 = NEAT_Network(pool.starting_genome, pool)
 
-    results = net.feedforward(data)
-    print(results)
+    assert(net1 + net2 != net1)
