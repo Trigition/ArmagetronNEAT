@@ -4,10 +4,8 @@
 import numpy as np
 from PIL import Image
 from scipy.ndimage import zoom
-from network import MLP_NN
-from neat import NEAT_Network, NEAT_Pool
-import networkx as nx
-import matplotlib.pyplot as plt
+
+from neat import NEAT_Network
 
 
 class Agent():
@@ -17,7 +15,12 @@ class Agent():
     agents = {}
     max_id = 0
 
-    def __init__(self, agent_id, grid_ref, pool_ref, agent_name='Agent', sensor_radius=5):
+    def __init__(self,
+                 agent_id,
+                 grid_ref,
+                 pool_ref,
+                 agent_name='Agent',
+                 sensor_radius=5):
         """Initializes an agent
 
         :agent_id: The agent id, must be unique to other agents
@@ -56,8 +59,6 @@ class Agent():
 
         """
         new_agent = Agent(Agent.max_id + 1, self.grid, self.pool)
-
-        #new_agent.brain = MLP_NN.crossover(self.brain, other.brain)
         new_agent.brain = self.brain + other.brain
         return new_agent
 

@@ -44,11 +44,10 @@ class Grid():
         agents = []
         for i in range(num_agents):
             agents.append(Agent(i+1, self, self.pool))
-        
+
         self.register_agents(agents)
         self.global_iter = 0
 
-        
     def register_agents(self, agents):
         for agent in agents:
             self.active_agents.append(agent)
@@ -66,6 +65,8 @@ class Grid():
             # Determine if any agents are now in walls/out of bounds
             if self.is_out_of_bounds(agent):
                 # Out of bounds
+                # Punish agent for going out of bounds
+                agent.lifetime /= 10.0
                 self.active_agents.remove(agent)
                 continue
             elif self.grid[agent.x][agent.y] != 0:
@@ -95,11 +96,12 @@ class Grid():
     def render_grid(self, scale=1):
         array = np.copy(self.grid)
         array[array > 0] = 255
-        
+
         if scale > 0:
             array = zoom(array, scale, order=0)
 
-        return Image.fromarray(array)
+        img = Image.fromarray(array)
+        img.convert('RGB').save('%010d.jpg' % self.global_iter)
 
     def epoch(self, n_trials=20):
         """Runs n_trials in an epoch. The top performing
@@ -118,7 +120,7 @@ class Grid():
             self.__reset_grid__()
             while len(self.active_agents) > 0:
                 self.step()
-                self.render_grid(scale = 4).convert('RGB').save('%010d.jpg' % self.global_iter)
+                self.render_grid(scale=4)
                 self.global_iter += 1
 
             # Update scoreboard
@@ -135,16 +137,18 @@ class Grid():
 
         return scoreboard
 
-
     def simulate(self, num_epochs=10):
         for epoch in range(num_epochs):
             print('Simulating Epoch: %d' % epoch)
-            
+
             results = self.epoch()
 
             data = sorted(list(results.values()))
-            print('Top %d. Low %d. Avg %d' % (data[0], data[len(data) - 1], float(sum(data)) / float(len(data))))
-            
+            data_sum = float(sum(data))
+            length = len(data)
+            status = (data[0], data[length - 1], data_sum / length)
+            print('Low %d. Top %d. Avg %d' % status)
+
             self.breed(results)
 
     def breed(self, agent_performances):
@@ -169,4 +173,3 @@ class Grid():
 
     def __reset_grid__(self):
         self.grid = np.zeros((self.width, self.height), dtype=np.uint32)
-

@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 
 
+import random
+
 import networkx as nx
 from networkx.algorithms.shortest_paths import has_path
-import random
+
 from activation import sigmoid
+
 
 class Node():
 
@@ -20,6 +23,7 @@ class Node():
 
         self.type = node_type
         self.label = label
+
 
 class NEAT_Pool():
 
@@ -80,6 +84,7 @@ class NEAT_Pool():
         edge = create_connection(input_node, output_node, self)
         return edge
 
+
 class NEAT_Network():
 
     """An instance of a genome"""
@@ -106,8 +111,8 @@ class NEAT_Network():
                     self.network.add_node(gene['in'], value=0.0)
                 if gene['out'] not in self.pool.nodes:
                     self.network.add_node(gene['out'], value=0.0)
-                self.network.add_edge(gene['in'],\
-                                      gene['out'],\
+                self.network.add_edge(gene['in'],
+                                      gene['out'],
                                       weight=gene['weight'],
                                       enabled=gene['enabled'],
                                       innovation=gene['innovation'])
@@ -121,7 +126,7 @@ class NEAT_Network():
         """
         if type(other) is not NEAT_Network:
             raise TypeError('You can only add Networks to other Networks')
-        
+
         new_genome = {}
 
         for i in range(self.pool.innovation_number):
@@ -130,7 +135,7 @@ class NEAT_Network():
 
             if left_gene is not None and right_gene is not None:
                 # Randomly choose a gene
-                chosen_gene = random.choice( [left_gene, right_gene] )
+                chosen_gene = random.choice([left_gene, right_gene])
                 new_genome[i] = chosen_gene.copy()
             elif left_gene is not None:
                 # Either disjoint or excess gene
@@ -139,11 +144,17 @@ class NEAT_Network():
             elif right_gene is not None:
                 new_genome[i] = right_gene.copy()
             else:
-                continue # Neither parent contains the gene for this innovation number
+                # Neither parent contains the gene for this innovation number
+                continue
 
-            # Random chance of disabling node
-            if random.uniform(0.0, 1.0) < 0.1:
-                new_genome[i]['enabled'] = False
+            if new_genome[i]['enabled']:
+                # Random chance of disabling node
+                if random.uniform(0.0, 1.0) < 0.1:
+                    new_genome[i]['enabled'] = False
+            else:
+                # Random chance of enabling node
+                if random.uniform(0.0, 1.0) < 0.75:
+                    new_genome[i]['enabled'] = True
 
             # Mutate weights
             new_genome[i]['weight'] += random.randrange(-1, 1)
@@ -156,13 +167,12 @@ class NEAT_Network():
         """Mutates the network
 
         """
-        chance = random.uniform(0.0,1.0)
+        chance = random.uniform(0.0, 1.0)
         if chance > 0.7:
             self.innovate_node()
-        chance = random.uniform(0.0,1.0)
+        chance = random.uniform(0.0, 1.0)
         if chance > 0.7:
             self.innovate_edge()
-
 
     def feedforward(self, data):
         # Load data
@@ -183,11 +193,12 @@ class NEAT_Network():
     def innovate_node(self):
         # Choose an edge to mutate
         # desired_edge = random.choice(self.network.edges)
-        desired_edge = random.choice([edge for edge in self.network.edges(data=True)])
-        
+        edges = [edge for edge in self.network.edges(data=True)]
+        desired_edge = random.choice(edges)
+
         # Ask pool to generate a hidden node
         new_node = self.pool.new_hidden_node()
-        
+
         # Create connections
         gene1 = self.pool.new_gene(desired_edge[0], new_node)
         gene2 = self.pool.new_gene(new_node, desired_edge[1])

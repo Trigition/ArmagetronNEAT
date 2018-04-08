@@ -3,11 +3,13 @@
 
 import numpy as np
 
+
 def sigmoid(x):
     """Sigmoid activation function
 
-    :x: TODO
-    :returns: TODO
+    :x: The input value
+    :returns: The value passed through
+    the sigmoid activation function
 
     """
     return 1 / (1+np.exp(-x))
