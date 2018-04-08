@@ -3,9 +3,9 @@
 
 
 import networkx as nx
+from networkx.algorithms.shortest_paths import has_path
 import random
 from activation import sigmoid
-
 
 class Node():
 
@@ -98,13 +98,19 @@ class NEAT_Network():
         self.__load_genome__(genome)
 
     def __load_genome__(self, genome):
+        for node in self.pool.input_nodes:
+            self.network.add_node(node)
         for innov, gene in genome.items():
             if gene['enabled']:
-                self.network.add_node(gene['in'], value=0.0)
-                self.network.add_node(gene['out'], value=0.0)
+                if gene['in'] not in self.pool.nodes:
+                    self.network.add_node(gene['in'], value=0.0)
+                if gene['out'] not in self.pool.nodes:
+                    self.network.add_node(gene['out'], value=0.0)
                 self.network.add_edge(gene['in'],\
                                       gene['out'],\
-                                      weight=gene['weight'])
+                                      weight=gene['weight'],
+                                      enabled=gene['enabled'],
+                                      innovation=gene['innovation'])
 
     def __add__(self, other):
         """Overrides the '+' operator for easy crossover
@@ -135,8 +141,12 @@ class NEAT_Network():
             else:
                 continue # Neither parent contains the gene for this innovation number
 
-            # Mutage weights
-            new_genome[i]['weight'] += random.randrange(-1, 1) / 100.0
+            # Random chance of disabling node
+            if random.uniform(0.0, 1.0) < 0.1:
+                new_genome[i]['enabled'] = False
+
+            # Mutate weights
+            new_genome[i]['weight'] += random.randrange(-1, 1)
 
         self.mutate()
 
@@ -146,11 +156,11 @@ class NEAT_Network():
         """Mutates the network
 
         """
-        chance = random.randrange(0.0,1.0)
-        if chance > 0.9:
+        chance = random.uniform(0.0,1.0)
+        if chance > 0.7:
             self.innovate_node()
-        change = random.randrange(0.0,1.0)
-        if change > 0.9:
+        chance = random.uniform(0.0,1.0)
+        if chance > 0.7:
             self.innovate_edge()
 
 
@@ -172,40 +182,47 @@ class NEAT_Network():
 
     def innovate_node(self):
         # Choose an edge to mutate
-        desired_edge = random.choice(self.network.edges)
+        # desired_edge = random.choice(self.network.edges)
+        desired_edge = random.choice([edge for edge in self.network.edges(data=True)])
         
         # Ask pool to generate a hidden node
         new_node = self.pool.new_hidden_node()
         
         # Create connections
-        gene1 = self.pool.new_gene(desired_edge['in'], new_node)
-        gene2 = self.pool.new_gene(new_node, desired_edge['out'])
+        gene1 = self.pool.new_gene(desired_edge[0], new_node)
+        gene2 = self.pool.new_gene(new_node, desired_edge[1])
 
-        self.genome.append(gene1)
-        seld.genome.append(gene2)
+        self.genome[gene1['innovation']] = gene1
+        self.genome[gene2['innovation']] = gene2
 
         # Disable old edge
-        desired_edge['enabled'] = False
+        desired_edge[2]['enabled'] = False
 
     def innovate_edge(self):
         """Innovates a new edge connection
 
         """
-        # Chose random source node
-        # This node cannot be an Input node
-        nodes = [node for node in self.network.nodes if nx.in_degree(self.networkx, node) > 0]
-        src_node = random.choice(nodes)
-        # Chose random destination node
-        # This node cannot be an ancestor of the input node
-        # this is to avoid a cycle
-        dest_nodes = [node for node in self.network.nodes if node not in self.network.predecessors(src_node)]
+        # Choose random node
+        choices = list(self.network.nodes)
+        node1 = random.choice(choices)
+        choices.remove(node1)
+        node2 = random.choice(choices)
 
-        if len(dest_nodes) > 0:
-            dest_node = random.choice(dest_nodes)
-            new_gene = self.pool.new_gene(src_node, dest_node)
-            self.genome.append(new_gene)
+        if has_path(self.network, node1, node2):
+            # There exists a path node1->node2
+            # No not make a path from node2->node1
+            src_node = node1
+            dest_node = node2
+        elif has_path(self.network, node2, node1):
+            # There exists a path node2->node1
+            src_node = node2
+            dest_node = node1
+        else:
+            # There is no path between node1 node2
+            return
 
-
+        new_gene = self.pool.new_gene(src_node, dest_node)
+        self.genome[new_gene['innovation']] = new_gene
 
 
 def get_weighted_sum(cur_node, network):
@@ -217,15 +234,18 @@ def get_weighted_sum(cur_node, network):
 
     """
     w_sum = 0.0
-    for node in network.predecessors(cur_node):
-        w_sum += get_weighted_sum(node, network)
+    try:
+        for node in network.predecessors(cur_node):
+            w_sum += get_weighted_sum(node, network)
 
-    if network.in_degree(cur_node) == 0:
-        w_sum = network.nodes[cur_node]['value']
-    else:
-        w_sum = sigmoid(w_sum)
-
-    return w_sum
+        if network.in_degree(cur_node) == 0:
+            w_sum = network.nodes[cur_node]['value']
+        else:
+            w_sum = sigmoid(w_sum)
+    except nx.exception.NetworkXError:
+        w_sum = 0.0
+    finally:
+        return w_sum
 
 
 def create_connection(input_node, output_node, pool):
@@ -242,7 +262,7 @@ def create_connection(input_node, output_node, pool):
     edge = {}
     edge['in'] = input_node
     edge['out'] = output_node
-    edge['weight'] = 1.0
+    edge['weight'] = 0.0
     edge['enabled'] = True
     edge['innovation'] = pool.innovation_number
 

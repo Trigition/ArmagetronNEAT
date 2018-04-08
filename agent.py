@@ -6,6 +6,9 @@ from PIL import Image
 from scipy.ndimage import zoom
 from network import MLP_NN
 from neat import NEAT_Network, NEAT_Pool
+import networkx as nx
+import matplotlib.pyplot as plt
+
 
 class Agent():
 
@@ -57,6 +60,13 @@ class Agent():
         #new_agent.brain = MLP_NN.crossover(self.brain, other.brain)
         new_agent.brain = self.brain + other.brain
         return new_agent
+
+    def get_complexity(self):
+        """Returns the number of graph connections
+        :returns: The number of neuron connections
+
+        """
+        return len(self.brain.network.edges)
 
     def set_pos(self, x, y):
         """Sets the position of the agent
@@ -116,7 +126,6 @@ class Agent():
                 else:
                     self.sensor[i_x][i_y] = 0
 
-        #self.render_sensor().save('%s-%08d.jpg' % (str(self), self.lifetime))
         return self.sensor
 
     def render_sensor(self, scale=5):

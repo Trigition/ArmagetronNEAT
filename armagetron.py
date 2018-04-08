@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from collections import defaultdict
 from PIL import Image
 from scipy.ndimage import zoom
 from agent import Agent
@@ -31,7 +32,7 @@ class Grid():
         self.num_agents = num_agents
 
         # Create grid
-        self.grid = np.zeros((width, height), dtype=np.uint8)
+        self.__reset_grid__()
 
         # Create pool
         dims = (sensor_radius+1, sensor_radius+1)
@@ -40,12 +41,12 @@ class Grid():
         self.active_agents = []
         self.my_agents = []
 
-        # self.register_agents([Agent(i + 1, self) for i in range(num_agents)])
         agents = []
         for i in range(num_agents):
             agents.append(Agent(i+1, self, self.pool))
         
         self.register_agents(agents)
+        self.global_iter = 0
 
         
     def register_agents(self, agents):
@@ -55,24 +56,41 @@ class Grid():
             self.randomly_place_agent(agent)
 
     def randomly_place_agent(self, agent):
-        pos_x = np.random.randint(0, self.width - 1, dtype=np.uint8)
-        pos_y = np.random.randint(0, self.height - 1, dtype=np.uint8)
+        pos_x = np.random.randint(0, self.width, dtype=np.uint8)
+        pos_y = np.random.randint(0, self.height, dtype=np.uint8)
         agent.set_pos(pos_x, pos_y)
         agent.set_orientation(np.random.randint(0, 4, dtype=np.uint8))
 
     def step(self):
         for agent in self.active_agents:
             # Determine if any agents are now in walls/out of bounds
-            if agent.x not in range(self.width - 1) or \
-               agent.y not in range(self.height - 1):
+            if self.is_out_of_bounds(agent):
                 # Out of bounds
                 self.active_agents.remove(agent)
+                continue
             elif self.grid[agent.x][agent.y] != 0:
                 # Collision into wall
                 self.active_agents.remove(agent)
+                continue
             # make a step
             self.grid[agent.x][agent.y] = agent.agent_id
             agent.step()
+
+    def is_out_of_bounds(self, agent):
+        """Checks to see if an agent is out of bounds
+
+        :agent: The agent being checked
+        :returns: True if the agent is out of bounds
+
+        """
+        x = agent.x
+        y = agent.y
+
+        if x < 0 or x >= self.width:
+            return True
+        if y < 0 or y >= self.height:
+            return True
+        return False
 
     def render_grid(self, scale=1):
         array = np.copy(self.grid)
@@ -83,27 +101,72 @@ class Grid():
 
         return Image.fromarray(array)
 
-    def simulate(self, num_epochs=5):
-        print('Simulating')
-        iterations = 0
-        while len(self.active_agents) > 0:
-            self.step()
-            self.render_grid(4).save('%08d.jpg' % iterations)
-            iterations += 1
+    def epoch(self, n_trials=20):
+        """Runs n_trials in an epoch. The top performing
+        agents are returned along with their average score
 
-        print('Simulation finished after %d steps' % iterations)
-        print('Top Agents:')
-        sorted_agents = sorted(self.my_agents, key=lambda x: x.lifetime, reverse=True)
-        sorted_agents = sorted_agents[:len(sorted_agents) // 10] # Take top %10
-        for agent in sorted_agents:
-            print('\t%s: %d' % (str(agent), agent.lifetime))
+        :n_trials: The number of trials to perform
+        :returns: A dict of agent performances
 
+        """
+
+        # Create scoreboard to record agent's performance
+        scoreboard = defaultdict(lambda: 0, {})
+
+        for trial in range(n_trials):
+            print('\tSimulating trial: %d' % trial)
+            self.__reset_grid__()
+            while len(self.active_agents) > 0:
+                self.step()
+                self.render_grid(scale = 4).convert('RGB').save('%010d.jpg' % self.global_iter)
+                self.global_iter += 1
+
+            # Update scoreboard
+            for agent in self.my_agents:
+                scoreboard[agent] += agent.lifetime
+
+            agents = self.my_agents
+            self.my_agents = []
+            self.register_agents(agents)
+
+        # Trials are finished, take average
+        for agent in self.my_agents:
+            scoreboard[agent] = float(scoreboard[agent]) / float(n_trials)
+
+        return scoreboard
+
+
+    def simulate(self, num_epochs=10):
+        for epoch in range(num_epochs):
+            print('Simulating Epoch: %d' % epoch)
+            
+            results = self.epoch()
+
+            data = sorted(list(results.values()))
+            print('Top %d. Low %d. Avg %d' % (data[0], data[len(data) - 1], float(sum(data)) / float(len(data))))
+            
+            self.breed(results)
+
+    def breed(self, agent_performances):
+        """Breeds agents after an epoch
+
+        """
+        sorted_agents = sorted(agent_performances, key=agent_performances.get)
 
         n_top = len(sorted_agents)
         new_agents = []
+
         for i in range(self.num_agents):
-            parent1 = sorted_agents[i // n_top]
+            parent1 = sorted_agents[(i // n_top) % n_top]
             parent2 = sorted_agents[(i+1) % n_top]
             offspring = parent1 + parent2
+            new_agents.append(offspring)
 
-        #return sorted_agents
+        self.my_agents = []
+        self.active_agents = []
+
+        self.register_agents(new_agents)
+
+    def __reset_grid__(self):
+        self.grid = np.zeros((self.width, self.height), dtype=np.uint32)
+
