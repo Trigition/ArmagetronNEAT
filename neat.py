@@ -157,7 +157,7 @@ class NEAT_Network():
                     new_genome[i]['enabled'] = True
 
             # Mutate weights
-            new_genome[i]['weight'] += random.randrange(-1, 1)
+            new_genome[i]['weight'] += random.randrange(-1, 1) * 10
 
         self.mutate()
 
@@ -202,6 +202,8 @@ class NEAT_Network():
         # Create connections
         gene1 = self.pool.new_gene(desired_edge[0], new_node)
         gene2 = self.pool.new_gene(new_node, desired_edge[1])
+        
+        gene2['weight'] = desired_edge[2]['weight']
 
         self.genome[gene1['innovation']] = gene1
         self.genome[gene2['innovation']] = gene2
