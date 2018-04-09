@@ -41,7 +41,6 @@ class Agent():
 
         self.sensor_radius = sensor_radius
 
-        # self.brain = MLP_NN( (2*sensor_radius+1)**2, 100, 3)
         self.brain = NEAT_Network(pool_ref.starting_genome, pool_ref)
         self.left = 1
         self.center = 0

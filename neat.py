@@ -157,7 +157,7 @@ class NEAT_Network():
                     new_genome[i]['enabled'] = True
 
             # Mutate weights
-            new_genome[i]['weight'] += random.randrange(-1, 1) * 10
+            new_genome[i]['weight'] += random.randrange(-1, 1)
 
         self.mutate()
 
@@ -249,7 +249,7 @@ def get_weighted_sum(cur_node, network):
     w_sum = 0.0
     try:
         for node in network.predecessors(cur_node):
-            w_sum += get_weighted_sum(node, network)
+            w_sum += get_weighted_sum(node, network) * network[node][cur_node]['weight']
 
         if network.in_degree(cur_node) == 0:
             w_sum = network.nodes[cur_node]['value']

@@ -147,7 +147,7 @@ class Grid():
             data_sum = float(sum(data))
             length = len(data)
             status = (data[0], data[length - 1], data_sum / length)
-            print('Low %d. Top %d. Avg %d' % status)
+            print('Low %f. Top %f. Avg %f' % status)
 
             self.breed(results)
 
