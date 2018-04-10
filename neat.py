@@ -168,10 +168,10 @@ class NEAT_Network():
 
         """
         chance = random.uniform(0.0, 1.0)
-        if chance > 0.7:
+        if chance < 0.01:
             self.innovate_node()
         chance = random.uniform(0.0, 1.0)
-        if chance > 0.7:
+        if chance < 0.03:
             self.innovate_edge()
 
     def feedforward(self, data):
@@ -275,7 +275,7 @@ def create_connection(input_node, output_node, pool):
     edge = {}
     edge['in'] = input_node
     edge['out'] = output_node
-    edge['weight'] = 0.0
+    edge['weight'] = 1.0
     edge['enabled'] = True
     edge['innovation'] = pool.innovation_number
 
