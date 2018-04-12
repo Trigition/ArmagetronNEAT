@@ -29,7 +29,7 @@ class NEAT_Pool():
 
     """A class which holds a pool of genomes"""
 
-    def __init__(self, input_src, input_dims, output_dim):
+    def __init__(self, input_dims, output_dim):
         """Initializes a Pool"""
         self.innovation_number = 0
 

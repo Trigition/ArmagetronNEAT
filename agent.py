@@ -12,13 +12,10 @@ class Agent():
 
     """An agent whic exists on the grid"""
 
-    agents = {}
-    max_id = 0
-
     def __init__(self,
                  agent_id,
-                 grid_ref,
                  pool_ref,
+                 genome=None,
                  agent_name='Agent',
                  sensor_radius=5):
         """Initializes an agent
@@ -29,19 +26,18 @@ class Agent():
         :sensor_radius: How far the agent can see in either direction
 
         """
-        Agent.check_type(agent_id, int)
-        Agent.check_type(agent_name, str)
 
         self.agent_id = agent_id
-        self.grid = grid_ref
         self.agent_name = agent_name
         self.lifetime = 0
         self.pool = pool_ref
-        Agent.register_agent(self)
-
         self.sensor_radius = sensor_radius
+        self.grid = None
 
-        self.brain = NEAT_Network(pool_ref.starting_genome, pool_ref)
+        if genome:
+            self.brain = NEAT_Network(genome, pool_ref)
+        else:
+            self.brain = NEAT_Network(pool_ref.starting_genome, pool_ref)
         self.left = 1
         self.center = 0
         self.right = 2
@@ -57,9 +53,12 @@ class Agent():
         :returns: A new agent with a mixed genome
 
         """
-        new_agent = Agent(Agent.max_id + 1, self.grid, self.pool)
+        new_agent = Agent(0, self.pool)
         new_agent.brain = self.brain + other.brain
         return new_agent
+
+    def set_grid(self, grid):
+        self.grid= grid
 
     def get_complexity(self):
         """Returns the number of graph connections
@@ -134,19 +133,6 @@ class Agent():
         if scale > 1:
             array = zoom(array, scale, order=0)
         return Image.fromarray(array).convert('RGB')
-
-    @staticmethod
-    def register_agent(agent):
-        """Registers a new agent
-
-        :agent: The agent instance
-
-        """
-        if agent.agent_id in Agent.agents:
-            raise ValueError('Duplicate agent id!')
-        Agent.agents[agent.agent_id] = agent
-        if agent.agent_id > Agent.max_id:
-            Agent.max_id = agent.agent_id
 
     @staticmethod
     def check_type(variable, dtype):

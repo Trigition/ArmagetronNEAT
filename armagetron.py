@@ -2,24 +2,92 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from collections import defaultdict
-from PIL import Image
 from scipy.ndimage import zoom
-from agent import Agent
 from neat import NEAT_Pool
+from populations import Population
+from worker_pool import Worker_Pool
+
+
+class Simulation():
+
+    """This class represents a simulation pool of grids
+    and agents. Here is where simulation parameters are set
+    and used."""
+
+    def __init__(self,
+            population_size,
+            sim_population,
+            sensor_radius=5,
+            n_threads=1):
+        """Initializes a simulation
+
+        :population_size: The allowable population size per generation
+        :sim_population: The allowable population size per grid simulation
+        :n_threads: The number of threads to utilize
+
+        """
+
+        # Type checking
+        if type(n_threads) is not int:
+            raise TypeError('Thread count must be a positive integer')
+        elif n_threads < 1:
+            raise ValueError('Thread count must be above 0')
+
+        # self.population_size = population_size
+        # self.sim_population = sim_population
+        self.n_threads = n_threads
+        self.sensor_radius = sensor_radius
+
+        # Create genetic pool for simulation
+        dims = (sensor_radius+1, sensor_radius+1)
+        self.pool = NEAT_Pool(dims, 3)
+        self.population = Population(population_size, sim_population, self.pool)
+
+    def simulate(self, generations=5):
+        """Evolves the Population until the specified generation
+
+        :generations: TODO
+        :returns: TODO
+
+        """
+
+        sim_dims = (100, 100)
+        workers = Worker_Pool(self.n_threads)
+
+        for generation in range(generations):
+            print('Simulating Generation: %d' % generation)
+            workers.reset_results()
+            pops = [pop for pop in self.population]
+            grids = [Grid(*sim_dims, pop) for pop in pops]
+
+            for grid in grids:
+                workers.add_task(grid.simulate)
+            workers.wait_for_completion()
+            
+            # Combine results
+            scores = {}
+            print('Breeding')
+            for d in workers.results:
+                for k, v in d.items():
+                    print(k, v)
+                    scores[k] = v
+            
+            self.population.breed(scores)
 
 
 class Grid():
 
     """A grid of pixels and agents"""
 
-    def __init__(self, width, height, num_agents, sensor_radius=5):
+    def __init__(self, width, height, agents):
         """Initializes the grid with a specific width
         and height
 
         :width: The width of the grid
         :height: The height of the grid
         :num_agents: The number of agents to simulate
+        :agents_per_sim: The maximum number of agents per
+        simulation
 
         """
         if type(width) is not int or type(height) is not int:
@@ -29,27 +97,20 @@ class Grid():
 
         self.width = width
         self.height = height
-        self.num_agents = num_agents
+        self.num_agents = len(agents)
 
         # Create grid
         self.__reset_grid__()
 
-        # Create pool
-        dims = (sensor_radius+1, sensor_radius+1)
-        self.pool = NEAT_Pool(self.grid, dims, 3)
-
         self.active_agents = []
         self.my_agents = []
-
-        agents = []
-        for i in range(num_agents):
-            agents.append(Agent(i+1, self, self.pool))
 
         self.register_agents(agents)
         self.global_iter = 0
 
     def register_agents(self, agents):
         for agent in agents:
+            agent.set_grid(self)
             self.active_agents.append(agent)
             self.my_agents.append(agent)
             self.randomly_place_agent(agent)
@@ -103,73 +164,16 @@ class Grid():
         img = Image.fromarray(array)
         img.convert('RGB').save('%010d.jpg' % self.global_iter)
 
-    def epoch(self, n_trials=20):
-        """Runs n_trials in an epoch. The top performing
-        agents are returned along with their average score
+    def simulate(self):
+        print('\tSimulating...')
+        while len(self.active_agents) > 0:
+            self.step()
 
-        :n_trials: The number of trials to perform
-        :returns: A dict of agent performances
-
-        """
-
-        # Create scoreboard to record agent's performance
-        scoreboard = defaultdict(lambda: 0, {})
-
-        for trial in range(n_trials):
-            print('\tSimulating trial: %d' % trial)
-            self.__reset_grid__()
-            while len(self.active_agents) > 0:
-                self.step()
-                self.render_grid(scale=4)
-                self.global_iter += 1
-
-            # Update scoreboard
-            for agent in self.my_agents:
-                scoreboard[agent] += agent.lifetime
-
-            agents = self.my_agents
-            self.my_agents = []
-            self.register_agents(agents)
-
-        # Trials are finished, take average
+        scores = {}
         for agent in self.my_agents:
-            scoreboard[agent] = float(scoreboard[agent]) / float(n_trials)
+            scores[agent] = agent.lifetime
 
-        return scoreboard
-
-    def simulate(self, num_epochs=10):
-        for epoch in range(num_epochs):
-            print('Simulating Epoch: %d' % epoch)
-
-            results = self.epoch()
-
-            data = sorted(list(results.values()))
-            data_sum = float(sum(data))
-            length = len(data)
-            status = (data[0], data[length - 1], data_sum / length)
-            print('Low %f. Top %f. Avg %f' % status)
-
-            self.breed(results)
-
-    def breed(self, agent_performances):
-        """Breeds agents after an epoch
-
-        """
-        sorted_agents = sorted(agent_performances, key=agent_performances.get)
-
-        n_top = len(sorted_agents)
-        new_agents = []
-
-        for i in range(self.num_agents):
-            parent1 = sorted_agents[(i // n_top) % n_top]
-            parent2 = sorted_agents[(i+1) % n_top]
-            offspring = parent1 + parent2
-            new_agents.append(offspring)
-
-        self.my_agents = []
-        self.active_agents = []
-
-        self.register_agents(new_agents)
+        return scores
 
     def __reset_grid__(self):
         self.grid = np.zeros((self.width, self.height), dtype=np.uint32)
