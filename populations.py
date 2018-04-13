@@ -124,8 +124,8 @@ class Population():
         high = max(list(agent_scores.values()))
         low = min(list(agent_scores.values()))
         avg = sum(list(agent_scores.values())) / len(list(agent_scores.values()))
-        print('Top %f, Low %f, Avg %f' % (high, low, avg))
-        print('Cutoff: %d, Number of elites %d, Number of Commoners %d' % \
+        print('\tTop %f, Low %f, Avg %f' % (high, low, avg))
+        print('\tCutoff: %d, Number of elites %d, Number of Commoners %d' % \
                 (cutoff, len(elites), len(commoners)))
 
         # Elites get priority when it comes to breeding, for each elite

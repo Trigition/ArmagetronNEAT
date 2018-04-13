@@ -66,7 +66,6 @@ class Simulation():
             
             # Combine results
             scores = {}
-            print('Breeding')
             for d in workers.results:
                 for k, v in d.items():
                     scores[k] = v
@@ -164,7 +163,6 @@ class Grid():
         img.convert('RGB').save('%010d.jpg' % self.global_iter)
 
     def simulate(self):
-        print('\tSimulating...')
         while len(self.active_agents) > 0:
             self.step()
 
