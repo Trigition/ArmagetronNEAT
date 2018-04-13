@@ -43,7 +43,7 @@ class Simulation():
         self.pool = NEAT_Pool(dims, 3)
         self.population = Population(population_size, sim_population, self.pool)
 
-    def simulate(self, generations=5):
+    def simulate(self, generations=60):
         """Evolves the Population until the specified generation
 
         :generations: TODO
@@ -69,7 +69,6 @@ class Simulation():
             print('Breeding')
             for d in workers.results:
                 for k, v in d.items():
-                    print(k, v)
                     scores[k] = v
             
             self.population.breed(scores)

@@ -121,6 +121,13 @@ class Population():
         cutoff = np.percentile(list(agent_scores.values()), percentile)
         elites, commoners = split_population(agent_scores, cutoff)
 
+        high = max(list(agent_scores.values()))
+        low = min(list(agent_scores.values()))
+        avg = sum(list(agent_scores.values())) / len(list(agent_scores.values()))
+        print('Top %f, Low %f, Avg %f' % (high, low, avg))
+        print('Cutoff: %d, Number of elites %d, Number of Commoners %d' % \
+                (cutoff, len(elites), len(commoners)))
+
         # Elites get priority when it comes to breeding, for each elite
         # select a mate(s)
         n_elites = len(elites)
@@ -143,9 +150,10 @@ class Population():
 
             next_generation.append(offspring)
             self.cur_id += 1
+            n_generated += 1
 
         # Set the new population
-        self.__set_new_population(next_generation)
+        self.__set_new_population__(next_generation)
         self.current_generation += 1
 
 
