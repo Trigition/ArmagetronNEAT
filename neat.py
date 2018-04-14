@@ -153,11 +153,11 @@ class NEAT_Network():
                     new_genome[i]['enabled'] = False
             else:
                 # Random chance of enabling node
-                if random.uniform(0.0, 1.0) < 0.75:
+                if random.uniform(0.0, 1.0) < 0.25:
                     new_genome[i]['enabled'] = True
 
             # Mutate weights
-            new_genome[i]['weight'] += random.randrange(-1, 1)
+            new_genome[i]['weight'] += random.randrange(-1, 1) * 0.1
 
         self.mutate()
 

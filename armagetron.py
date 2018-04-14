@@ -42,7 +42,7 @@ class Simulation():
         self.population = Population(population_size, sim_population, self.pool)
         self.renderer = Renderer()
 
-    def simulate(self, generations=5):
+    def simulate(self, generations=60):
         """Evolves the Population until the specified generation
 
         :generations: TODO
@@ -71,10 +71,8 @@ class Simulation():
             
             # Combine results
             scores = {}
-            print('Breeding')
             for d in workers.results:
                 for k, v in d.items():
-                    print(k, v)
                     scores[k] = v
             
             self.population.breed(scores)
@@ -189,7 +187,6 @@ class Grid():
         self.image_queue.put(job)
 
     def simulate(self):
-        print('\tSimulating...')
         while len(self.active_agents) > 0:
             self.step()
 
