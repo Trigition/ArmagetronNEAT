@@ -6,7 +6,7 @@ from scipy.ndimage import zoom
 from neat import NEAT_Pool
 from populations import Population
 from worker_pool import Worker_Pool
-
+from rendering import Renderer
 
 class Simulation():
 
@@ -33,8 +33,6 @@ class Simulation():
         elif n_threads < 1:
             raise ValueError('Thread count must be above 0')
 
-        # self.population_size = population_size
-        # self.sim_population = sim_population
         self.n_threads = n_threads
         self.sensor_radius = sensor_radius
 
@@ -42,6 +40,7 @@ class Simulation():
         dims = (sensor_radius+1, sensor_radius+1)
         self.pool = NEAT_Pool(dims, 3)
         self.population = Population(population_size, sim_population, self.pool)
+        self.renderer = Renderer()
 
     def simulate(self, generations=5):
         """Evolves the Population until the specified generation
@@ -58,7 +57,13 @@ class Simulation():
             print('Simulating Generation: %d' % generation)
             workers.reset_results()
             pops = [pop for pop in self.population]
-            grids = [Grid(*sim_dims, pop) for pop in pops]
+            grids = []
+
+            i =0
+            for population in pops:
+                g = Grid(*sim_dims, population, self.renderer.buffer, generation, i)
+                grids.append(g)
+                i += 1
 
             for grid in grids:
                 workers.add_task(grid.simulate)
@@ -74,12 +79,20 @@ class Simulation():
             
             self.population.breed(scores)
 
+        self.renderer.wait_till_done()
+
 
 class Grid():
 
     """A grid of pixels and agents"""
 
-    def __init__(self, width, height, agents):
+    def __init__(self,
+                 width,
+                 height,
+                 agents,
+                 image_queue,
+                 generation,
+                 population_number):
         """Initializes the grid with a specific width
         and height
 
@@ -106,7 +119,19 @@ class Grid():
         self.my_agents = []
 
         self.register_agents(agents)
-        self.global_iter = 0
+
+        self.iteration = 0
+        self.image_queue = image_queue
+        self.generation = generation
+        self.pop_num = population_number
+
+    def __str__(self):
+        """Returns a string representation of the Grid instance
+        :returns: A string
+
+        """
+        s = 'Grid-%d-%d-%d' % (self.generation, self.pop_num, self.iteration)
+        return s
 
     def register_agents(self, agents):
         for agent in agents:
@@ -137,6 +162,8 @@ class Grid():
             # make a step
             self.grid[agent.x][agent.y] = agent.agent_id
             agent.step()
+        self.render_grid()
+        self.iteration += 1
 
     def is_out_of_bounds(self, agent):
         """Checks to see if an agent is out of bounds
@@ -154,15 +181,12 @@ class Grid():
             return True
         return False
 
-    def render_grid(self, scale=1):
-        array = np.copy(self.grid)
-        array[array > 0] = 255
-
-        if scale > 0:
-            array = zoom(array, scale, order=0)
-
-        img = Image.fromarray(array)
-        img.convert('RGB').save('%010d.jpg' % self.global_iter)
+    def render_grid(self, scale=4):
+        job = {}
+        job['matrix'] = self.grid
+        job['scale'] = scale
+        job['filename'] = str(self)
+        self.image_queue.put(job)
 
     def simulate(self):
         print('\tSimulating...')

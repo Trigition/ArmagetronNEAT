@@ -5,8 +5,8 @@ from queue import Queue
 from threading import Thread
 
 import numpy as np
-from PIL.Image import Image
-from scipy.ndimate import zoom
+from PIL import Image
+from scipy.ndimage import zoom
 
 
 class Renderer(Thread):
@@ -17,25 +17,30 @@ class Renderer(Thread):
     def __init__(self, buffer_len=1024):
         """Initializes a renderer
 
-        :buffer_len: TODO
+        :buffer_len: How many jobs can be queued at once before
+        the Renderer will block any more inputs
 
         """
         Thread.__init__(self)
 
         self.buffer = Queue(buffer_len)
+        self.daemon = True
+        self.start()
 
     def run(self):
         """Runs the Renderer Thread
-        :returns: TODO
 
         """
         while True:
             job = self.buffer.get()
-            filename = '%s-%010d.jpg' % (job['filename'], job['iteration'])
+            filename = '%s.jpg' % job['filename']
             img = insert_lines(job['matrix'], job['scale'], thickness=3)
             img = Image.fromarray(img)
             img.convert('RGB').save(filename)
-            self.queue.task_done()
+            self.buffer.task_done()
+
+    def wait_till_done(self):
+        self.queue.join()
 
 
 def insert_lines(a, scale, value=0, thickness=1):
@@ -65,11 +70,9 @@ def insert_lines(a, scale, value=0, thickness=1):
               (height, scale))
 
     # Insert
-    for i in range(0, width, scale):
-        for _ in range(thickness):
-            new_a = np.insert(a, i, value, axis=0)
-    for i in range(0, height, scale):
-        for _ in range(thickness):
-            new_a = np.insert(a, i, value, axis=1)
+    for i in reversed(range(0, width, scale)):
+        new_a = np.insert(new_a, i, value, axis=0)
+    for i in reversed(range(0, height, scale)):
+        new_a = np.insert(new_a, i, value, axis=1)
 
     return new_a
