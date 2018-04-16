@@ -77,7 +77,7 @@ class Simulation():
             
             self.population.breed(scores)
 
-        self.renderer.wait_till_done()
+        self.renderer.buffer.wait_till_done()
 
 
 class Grid():
