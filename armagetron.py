@@ -128,7 +128,7 @@ class Grid():
         :returns: A string
 
         """
-        s = 'Grid-%d-%d-%d' % (self.generation, self.pop_num, self.iteration)
+        s = 'Grid-%03d-%03d-%03d' % (self.generation, self.pop_num, self.iteration)
         return s
 
     def register_agents(self, agents):
@@ -145,6 +145,7 @@ class Grid():
         agent.set_orientation(np.random.randint(0, 4, dtype=np.uint8))
 
     def step(self):
+
         for agent in self.active_agents:
             # Determine if any agents are now in walls/out of bounds
             if self.is_out_of_bounds(agent):
@@ -160,6 +161,7 @@ class Grid():
             # make a step
             self.grid[agent.x][agent.y] = agent.agent_id
             agent.step()
+
         self.render_grid()
         self.iteration += 1
 
@@ -181,7 +183,7 @@ class Grid():
 
     def render_grid(self, scale=4):
         job = {}
-        job['matrix'] = self.grid
+        job['matrix'] = np.copy(self.grid)
         job['scale'] = scale
         job['filename'] = str(self)
         self.image_queue.put(job)
