@@ -30,6 +30,7 @@ class Agent():
         self.agent_id = agent_id
         self.agent_name = agent_name
         self.lifetime = 0
+        self.turn_multiplier = 1.0
         self.pool = pool_ref
         self.sensor_radius = sensor_radius
         self.grid = None
@@ -78,6 +79,7 @@ class Agent():
 
     def set_orientation(self, heading):
         self.heading = heading % 4
+        self.turn_multiplier += 1
 
     def move_forward(self):
         delta_x = (self.heading % 2) * ((self.heading - 2) * -1)
@@ -94,12 +96,13 @@ class Agent():
 
         if result == self.left:
             self.set_orientation(self.heading - 1)
-
-        if result == self.right:
+        elif result == self.right:
             self.set_orientation(self.heading + 1)
+        else:
+            self.turn_multiplier -= 0.01
 
         self.move_forward()
-        self.lifetime += 1
+        self.lifetime += 1 * self.turn_multiplier
 
     def sense(self):
         max_x = self.x + self.sensor_radius

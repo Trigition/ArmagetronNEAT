@@ -168,10 +168,10 @@ class NEAT_Network():
 
         """
         chance = random.uniform(0.0, 1.0)
-        if chance < 0.01:
+        if chance < 0.03:
             self.innovate_node()
         chance = random.uniform(0.0, 1.0)
-        if chance < 0.03:
+        if chance < 0.3:
             self.innovate_edge()
 
     def feedforward(self, data):
