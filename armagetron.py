@@ -40,9 +40,10 @@ class Simulation():
         dims = (sensor_radius+1, sensor_radius+1)
         self.pool = NEAT_Pool(dims, 3)
         self.population = Population(population_size, sim_population, self.pool)
+
         self.renderer = Renderer()
 
-    def simulate(self, generations=60):
+    def simulate(self, generations=1):
         """Evolves the Population until the specified generation
 
         :generations: TODO
@@ -68,16 +69,16 @@ class Simulation():
             for grid in grids:
                 workers.add_task(grid.simulate)
             workers.wait_for_completion()
-            
+
             # Combine results
             scores = {}
             for d in workers.results:
                 for k, v in d.items():
                     scores[k] = v
-            
+
             self.population.breed(scores)
 
-        self.renderer.buffer.wait_till_done()
+        self.renderer.wait_till_done()
 
 
 class Grid():
@@ -85,12 +86,12 @@ class Grid():
     """A grid of pixels and agents"""
 
     def __init__(self,
-                 width,
-                 height,
-                 agents,
-                 image_queue,
-                 generation,
-                 population_number):
+            width,
+            height,
+            agents,
+            image_queue,
+            generation,
+            population_number):
         """Initializes the grid with a specific width
         and height
 
@@ -153,16 +154,19 @@ class Grid():
                 # Punish agent for going out of bounds
                 agent.lifetime /= 10.0
                 self.active_agents.remove(agent)
+                self.render_agent(agent)               
                 continue
             elif self.grid[agent.x][agent.y] != 0:
                 # Collision into wall
                 self.active_agents.remove(agent)
+                self.render_agent(agent)
                 continue
             # make a step
             self.grid[agent.x][agent.y] = agent.agent_id
             agent.step()
 
-        self.render_grid()
+        # self.render_grid()
+        self.grid_history.append(np.copy(self.grid))
         self.iteration += 1
 
     def is_out_of_bounds(self, agent):
@@ -181,10 +185,15 @@ class Grid():
             return True
         return False
 
+    def render_agent(self, agent):
+        job = {}
+        job['matrix'] = agent.sensor_history
+        job['filename'] = str(agent)
+        self.image_queue.put(job)
+
     def render_grid(self, scale=4):
         job = {}
-        job['matrix'] = np.copy(self.grid)
-        job['scale'] = scale
+        job['matrix'] = self.grid_history
         job['filename'] = str(self)
         self.image_queue.put(job)
 
@@ -196,7 +205,10 @@ class Grid():
         for agent in self.my_agents:
             scores[agent] = agent.lifetime
 
+        self.render_grid()
+
         return scores
 
     def __reset_grid__(self):
         self.grid = np.zeros((self.width, self.height), dtype=np.uint32)
+        self.grid_history = []

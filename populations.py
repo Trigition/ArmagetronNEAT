@@ -12,7 +12,7 @@ class Population():
     """This class holds a collection of agents
     together as a discrete population"""
 
-    def __init__(self, max_population, sim_population, genetic_pool):
+    def __init__(self, max_population, sim_population, genetic_pool, sensor_radius=5):
         """Initializes a population
 
         :max_population: The maximum population at any
@@ -30,6 +30,7 @@ class Population():
         
         self.current_population = []
         self.current_generation = 0
+        self.radius = sensor_radius
         self.__set_new_population__()
 
     def __iter__(self):
@@ -72,7 +73,7 @@ class Population():
             self.current_population = population
         else:
             for i in range(self.max_population):
-                agent = Agent(self.cur_id, self.genetic_pool)
+                agent = Agent(self.cur_id, self.genetic_pool, sensor_radius=self.radius)
                 self.current_population.append(agent)
                 self.cur_id += 1
 

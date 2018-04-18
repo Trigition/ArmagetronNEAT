@@ -40,14 +40,14 @@ class Renderer(Thread):
         """
         while True:
             job = self.buffer.get()
-            filename = '%s/%s.jpg' % (self.img_dir, job['filename'])
-            img = insert_lines(job['matrix'], job['scale'], thickness=3)
-            img = Image.fromarray(img)
-            img.convert('RGB').save(filename)
+            filename = '%s/%s' % (self.img_dir, job['filename'])
+            array = np.array(job['matrix'])
+            if array.shape[0] > 0:
+                np.save(filename, array)
             self.buffer.task_done()
 
     def wait_till_done(self):
-        self.queue.join()
+        self.buffer.join()
 
 
 def insert_lines(a, scale, value=128, thickness=1):

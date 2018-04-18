@@ -33,6 +33,7 @@ class Agent():
         self.pool = pool_ref
         self.sensor_radius = sensor_radius
         self.grid = None
+        self.sensor_history = []
 
         if genome:
             self.brain = NEAT_Network(genome, pool_ref)
@@ -53,12 +54,12 @@ class Agent():
         :returns: A new agent with a mixed genome
 
         """
-        new_agent = Agent(0, self.pool)
+        new_agent = Agent(0, self.pool, sensor_radius=self.sensor_radius)
         new_agent.brain = self.brain + other.brain
         return new_agent
 
     def set_grid(self, grid):
-        self.grid= grid
+        self.grid = grid
 
     def get_complexity(self):
         """Returns the number of graph connections
@@ -125,6 +126,7 @@ class Agent():
                 else:
                     self.sensor[i_x][i_y] = 0
 
+        self.sensor_history.append(np.copy(self.sensor))
         return self.sensor
 
     def render_sensor(self, scale=5):
