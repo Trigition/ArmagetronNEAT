@@ -1,6 +1,7 @@
 images/
 *.jpg
 *.mpeg
+*.mp4
 # Created by https://www.gitignore.io/api/python
 
 ### Python ###
