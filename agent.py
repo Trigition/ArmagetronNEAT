@@ -99,7 +99,7 @@ class Agent():
         elif result == self.right:
             self.set_orientation(self.heading + 1)
         else:
-            self.turn_multiplier -= 0.01
+            self.turn_multiplier -= 0.1
 
         self.move_forward()
         self.lifetime += 1 * self.turn_multiplier

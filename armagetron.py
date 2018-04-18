@@ -17,7 +17,7 @@ class Simulation():
     def __init__(self,
             population_size,
             sim_population,
-            sensor_radius=5,
+            sensor_radius=1,
             n_threads=1):
         """Initializes a simulation
 
