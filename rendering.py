@@ -43,6 +43,7 @@ class Renderer(Thread):
             filename = '%s/%s' % (self.img_dir, job['filename'])
             array = np.array(job['matrix'])
             if array.shape[0] > 0:
+                array[array > 0] = 255
                 np.save(filename, array)
             self.buffer.task_done()
 

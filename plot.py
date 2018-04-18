@@ -27,4 +27,5 @@ def animate(i):
 
 anim = animation.FuncAnimation(fig, animate, blit=True, interval=60, frames=master_array.shape[0] - 1)
 
+anim.save('anim.mp4', fps=60)
 plt.show()

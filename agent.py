@@ -121,10 +121,11 @@ class Agent():
             for y in range(y_range[0], y_range[1]):
                 i_x = self.sensor_radius + (x - self.x)
                 i_y = self.sensor_radius + (y - self.y)
-                if self.grid.grid[x][y] > 0:
-                    self.sensor[i_x][i_y] = 255
-                else:
+                if self.grid.grid[x][y] <= 0:
                     self.sensor[i_x][i_y] = 0
+
+        # Rotate sensor so the agent is always going 'upwards'
+        self.sensor = np.rot90(self.sensor, self.heading)
 
         self.sensor_history.append(np.copy(self.sensor))
         return self.sensor

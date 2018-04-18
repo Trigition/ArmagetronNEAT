@@ -154,12 +154,10 @@ class Grid():
                 # Punish agent for going out of bounds
                 agent.lifetime /= 10.0
                 self.active_agents.remove(agent)
-                self.render_agent(agent)               
                 continue
             elif self.grid[agent.x][agent.y] != 0:
                 # Collision into wall
                 self.active_agents.remove(agent)
-                self.render_agent(agent)
                 continue
             # make a step
             self.grid[agent.x][agent.y] = agent.agent_id
